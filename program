@@ -1,0 +1,231 @@
+
+import java.io.*;
+import java.util.Arrays;
+import java.util.Collections;
+
+  
+public class Risk2 
+{  
+    public static void main(String[] args)
+    {
+    //initialize parameter values, N is number of scientists, d is number of labs sampled during evolution,
+        //pn is probability of success for a non-risk taking lab, payn is payoff given success for a non risk taking lab, 
+        //payr is payoff for risk taking lab, problabrisk is initial probability that any lab is risk taking, array is to hold samples
+        //c and f determine aspects of the distribution from which pr (the probability of success for a risk taking lab) is drawn, c flattens the curve and f drops it further below 0
+    //Heritability is whether the lab does not get risk of parent (0) or whether it does (1)
+        //use arrays to cycle through parameters with payarr for payr, carr for c, and herarr for heritability
+        
+      int N = 100;
+      int d = 1;
+       double pn = .8;
+       double payn = 1;
+       
+       double []payrarr = {5};
+       double payr = 0;
+       
+      double problabrisk = .5;
+      Integer []array = new Integer[d];
+      
+      double []carr = {.2};
+      double c = 0;
+      double f = .02;
+      double heritability = 0;
+      double []herarr = {.5};
+   
+      
+      //file writer
+        
+      try{
+               FileWriter outfile = new FileWriter(args[0]);
+                PrintWriter out = new PrintWriter(outfile);   
+      
+      //cycle through heritability
+       for (int k = 0; k < herarr.length; k++)
+       {heritability = herarr[k];
+           
+    //cycle through each c
+       for (int jjj = 0; jjj < carr.length; jjj++)
+       {c = carr[jjj];
+       
+       //cycle through payoff differences
+       for (int jj = 0; jj < payrarr.length; jj++)
+       {payr = payrarr[jj];
+          
+           
+      //x is number of trials, xx is number of time steps per trial
+         int x = 1000;
+       int xx = 1000;
+           
+
+        //initialize matrix to keep track of each lab in the simulation, entry 0 tracks risk taking (0) or non-risk taking (1), entry 1 tracks characteristic chance of success for each lab pr or pn
+       //entry 2 tracks accumulated payoff over course of simulation, entry 3 tracks age
+         
+       double [][]labs = new double[N][4];
+       
+       //initialize matrix to keep track of results: 1 is actual risk choice of each run, 2 is whether they converged to all risk(0), non risk(1), or neither(2)
+       double []results1 = new double[x];
+       int []results2 = new int[3];
+           
+      //x is number of trials, xx is number of time steps per trial
+       
+     
+       //begin runs of simulation
+       
+        for (int ii = 0; ii < x; ii++)
+        {
+            
+            //initialize values for labs, both risk taking/nonrisk taking, and characteristic probability of success
+            for (int i = 0; i < N; i++)
+        { if (Math.random() < problabrisk)
+                { labs[i][0] = 0;}
+        else
+        {labs[i][0] = 1;}
+
+        if (labs[i][0] == 0)
+        {//use function to choose characteristic probability of success for risk taking lab, cx^2-f, lower bounded at 0 
+       double a = Math.random();
+            labs[i][1] = c*(a*a) - f;
+            if (labs[i][1]<0)
+            {labs[i][1] = 0;}
+            else {}}
+        else {labs[i][1] = pn;}
+            labs[i][2] = 0;
+            labs[i][3] = 0;}
+            
+         //begin time steps of simulation
+       
+        for (int iii = 0; iii < xx; iii++)
+        {   
+          //Science portion - success is determined for each lab and payoff accumulated
+            for (int i = 0; i < N; i++)
+            { if (Math.random()< labs[i][1])
+                {if (labs[i][0] == 0)
+                {labs[i][2] = labs[i][2]+payr;}
+                else
+                {labs[i][2] = labs[i][2]+payn;}}
+            else{}
+            }
+            
+            // make labs older
+            for (int i = 0; i < N; i++)
+            {labs[i][3] = labs[i][3] +1;}
+            
+
+     //Evolution portion - select one lab to die based on age out of d samples, select one lab to replicate
+            
+            //lab death, first select d labs as samples
+             Integer[] arr = new Integer[N];
+           for (int i = 0; i < arr.length; i++) {
+              arr[i] = i; }
+           Collections.shuffle(Arrays.asList(arr));
+ 
+            for (int i = 0; i < d; i++)
+            {array[i] = arr[i];}   
+            
+            //Now choose the oldest of these, pick randomly for ties
+               double p = 0;
+            for (int i = 0; i < d; i++)
+            { if (p < labs[array[i]][3])
+                {p = labs[array[i]][3];}}
+            
+               //p is age of oldest labs, create an array with only oldest labs listed
+            
+            int []array2 = new int[d];
+            int y = 0;
+            for (int i = 0; i < d; i++)
+            { if (labs[array[i]][3] == p)
+                {array2[y] = array[i];
+                y++;}}
+            
+            //randomly choose one member of this array for death
+            int yy = (int)(Math.random()*(y));
+            int death = array2[yy];
+            
+            //Now choose lab for replication
+            //sample d labs
+             for (int i = 0; i < arr.length; i++) {
+              arr[i] = i; }
+           Collections.shuffle(Arrays.asList(arr));
+ 
+            for (int i = 0; i < d; i++)
+            {array[i] = arr[i];}
+            
+            //choose one with highest accumulated payoff, random choice for ties
+            
+           p = 0;
+            for (int i = 0; i < d; i++)
+            { if (p < labs[array[i]][2])
+                {p = labs[array[i]][2];}}
+            
+               //p is payoff of highest payoff labs, create an array with only highest payoff labs listed
+            for (int i = 0; i < d; i++)
+            {array2[i] = 0;}
+            y = 0;
+            for (int i = 0; i < d; i++)
+            { if (labs[array[i]][2] == p)
+                {array2[y] = array[i];
+                y++;}}
+                   
+            //randomly choose one member of this array for replication
+             yy = (int)(Math.random()*(y));
+            int birth = array2[yy];
+            
+            //create new lab with same risk tendencies and new characteristic success rate
+            labs[death][0] = labs[birth][0];
+            labs[death][2] = 0;
+             labs[death][3] = 0;
+             if (labs[death][0]==0)
+             { double s = Math.random();
+                 if (s > heritability)
+                 {double a = Math.random();
+            labs[death][1] = c*(a*a) - f;
+            if (labs[death][1]<0)
+            {labs[death][1] = 0;}}
+             else
+             {labs[death][1] = labs[birth][1];}
+             }
+             else
+             {labs[death][1] = .8;}
+             
+//close this trial
+        }
+        
+        //record results
+        double g = 0;
+         for (int i = 0; i < N; i++)
+         {g = g + labs[i][0];}
+         
+         results1[ii]=g;
+         
+         if (g==0)
+         {results2[0] = results2[0]+1;}
+         else if (g==N)
+         {results2[1] = results2[1]+1;}
+         else
+         {results2[2] =results2[2]+1; }
+         
+         //close all trials
+  }
+      out.print(heritability + ",");
+        out.print(c + ",");
+      out.print(payr + ",");
+        for (int i = 0; i < 3; i++) 
+       {out.print(results2[i] + ",");}
+        out.println();
+       
+       //close payoffs cycle
+       }
+       
+       //close c cycle
+       }
+       //close heritability
+       }
+     //close file writer
+        out.close();
+       }
+        catch (IOException ee)
+            {ee.printStackTrace();}
+    }
+}
+        
+      
